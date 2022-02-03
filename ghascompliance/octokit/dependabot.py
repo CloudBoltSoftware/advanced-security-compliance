@@ -42,7 +42,7 @@ GRAPHQL_DEPENDENCY_INFO = """\
         licenseInfo {
             name
         }
-        dependencyGraphManifests {
+        dependencyGraphManifests(first:60) {
             totalCount
             edges {
                 node {
