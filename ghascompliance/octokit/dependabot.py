@@ -42,7 +42,7 @@ GRAPHQL_DEPENDENCY_INFO = """\
         licenseInfo {
             name
         }
-        dependencyGraphManifests {
+        dependencyGraphManifests(first:60) {
             totalCount
             edges {
                 node {
@@ -54,14 +54,9 @@ GRAPHQL_DEPENDENCY_INFO = """\
                                 packageManager
                                 requirements
                                 repository {
-                                    isArchived
-                                    isDisabled
-                                    isEmpty
-                                    isFork
-                                    isSecurityPolicyEnabled
-                                    isInOrganization
                                     licenseInfo {
                                         name
+                                        spdxId
                                     }
                                 }
                             }
@@ -160,8 +155,6 @@ class Dependencies(OctoRequests):
         results = []
 
         repo = response.get("data", {}).get("repository", {})
-        # repo_name = repo.get('name')
-        # repo_license = repo.get('licenseInfo', {}).get('name')
 
         manifests = repo.get("dependencyGraphManifests", {}).get("edges", [])
 
@@ -195,16 +188,16 @@ class Dependencies(OctoRequests):
                 Octokit.debug(f" > {dependency_name} == {dependency_license_name}")
 
                 dependency_maintenance = []
-                for dep_maintenance in [
-                    "isArchived",
-                    "isDisabled",
-                    "isEmpty",
-                    "isLocked",
-                ]:
-                    if dependency_repo and dependency_repo.get(dep_maintenance, False):
-                        dependency_maintenance.append(
-                            dep_maintenance.replace("is", "", 1).lower()
-                        )
+                #  for dep_maintenance in [
+                    #  "isArchived",
+                    #  "isDisabled",
+                    #  "isEmpty",
+                    #  "isLocked",
+                #  ]:
+                    #  if dependency_repo and dependency_repo.get(dep_maintenance, False):
+                        #  dependency_maintenance.append(
+                            #  dep_maintenance.replace("is", "", 1).lower()
+                        #  )
 
                 is_organization: bool = None
                 if dependency_repo:
@@ -213,6 +206,8 @@ class Dependencies(OctoRequests):
                 full_name = Dependencies.createDependencyName(
                     dependency_manager, dependency_name, dependency_requirement
                 )
+
+                spdxId = dependency_license.get("spdxId", "NA") if dependency_license else "NA"
 
                 results.append(
                     {
@@ -224,6 +219,7 @@ class Dependencies(OctoRequests):
                         "license": dependency_license_name,
                         "maintenance": dependency_maintenance,
                         "organization": is_organization,
+                        "spdxId": spdxId
                     }
                 )
 

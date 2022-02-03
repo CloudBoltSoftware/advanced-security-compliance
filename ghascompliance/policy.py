@@ -6,6 +6,7 @@ import fnmatch
 import datetime
 import tempfile
 import subprocess
+import re
 from typing import List
 from urllib.parse import urlparse
 from ghascompliance.consts import SEVERITIES, TECHNOLOGIES, LICENSES
@@ -263,10 +264,9 @@ class Policy:
         return severities
 
     def matchContent(self, name: str, validators: List[str]):
-        # Wildcard matching
+        # case insensitive regex test if name is in validators
         for validator in validators:
-            results = fnmatch.filter([name], validator)
-            if results:
+            if re.search(validator, name, re.IGNORECASE):
                 return True
         return False
 
@@ -356,11 +356,11 @@ class Policy:
                         ign.lower()
                         for ign in policy.get("conditions", {}).get("names", [])
                     ]
-                    ingores_names = [
+                    ignores_names = [
                         ign.lower()
                         for ign in policy.get("ignores", {}).get("names", [])
                     ]
-                    if self.matchContent(check_name, ingores_names):
+                    if self.matchContent(check_name, ignores_names):
                         return False
                     elif self.matchContent(check_name, condition_names):
                         return True
@@ -371,10 +371,10 @@ class Policy:
                         ign.lower()
                         for ign in policy.get("conditions", {}).get("ids", [])
                     ]
-                    ingores_ids = [
+                    ignores_ids = [
                         ign.lower() for ign in policy.get("ignores", {}).get("ids", [])
                     ]
-                    if self.matchContent(check_id, ingores_ids):
+                    if self.matchContent(check_id, ignores_ids):
                         return False
                     elif self.matchContent(check_id, condition_ids):
                         return True
@@ -410,6 +410,8 @@ class Policy:
             dependency.get("manager", "NA") + "://" + dependency.get("name", "NA")
         )
         dependency_full = dependency.get("full_name", "NA://NA#NA")
+        dependency_spdxId = dependency.get("spdxId", "NA")
+
 
         # gather warning ids and names
         warning_ids = [wrn.lower() for wrn in policy.get("warnings", {}).get("ids", [])]
@@ -426,28 +428,30 @@ class Policy:
             )
 
         # gather ignore ids and names
-        ingore_ids = [ign.lower() for ign in policy.get("ingores", {}).get("ids", [])]
-        ingore_names = [
-            ign.lower() for ign in policy.get("ingores", {}).get("names", [])
+        ignore_ids = [ign.lower() for ign in policy.get("ignores", {}).get("ids", [])]
+        ignore_names = [
+            ign.lower() for ign in policy.get("ignores", {}).get("names", [])
         ]
 
         # gather condition ids and names
-        condition_ids = [
+        conditions_ids = [
             ign.lower() for ign in policy.get("conditions", {}).get("ids", [])
         ]
         conditions_names = [
             ign.lower() for ign in policy.get("conditions", {}).get("names", [])
         ]
 
-        for value in [license, dependency_full, dependency_name, dependency_short_name]:
+        for value in [license, dependency_full, dependency_name, dependency_short_name, dependency_spdxId]:
+            Octokit.info(f"Dependency Value line 449 :: {value}")
 
             # return false (ignore) if name or id is defined in the ignore portion of the policy
-            if self.matchContent(value, ingore_ids) or self.matchContent(
-                value, ingore_names
+            if self.matchContent(value, ignore_ids) or self.matchContent(
+                value, ignore_names
             ):
+                Octokit.info(f"Dependency License Ignore :: {value}")
                 return False
             # annotate error and return true if name or id is defined as a condition
-            elif self.matchContent(value, condition_ids) or self.matchContent(
+            if self.matchContent(value, conditions_ids) or self.matchContent(
                 value, conditions_names
             ):
                 Octokit.error(
